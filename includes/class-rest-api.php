@@ -32,11 +32,18 @@ class WP_Claude_MCP_REST_API {
             'permission_callback' => array($this, 'check_remote_permission'),
         ));
 
-        // Endpoint SSE para streaming
+        // Endpoint SSE para streaming (GET) e mensagens (POST)
         register_rest_route(self::NAMESPACE, '/sse', array(
-            'methods' => 'GET',
-            'callback' => array($this, 'handle_sse_stream'),
-            'permission_callback' => array($this, 'check_remote_permission'),
+            array(
+                'methods' => 'GET',
+                'callback' => array($this, 'handle_sse_stream'),
+                'permission_callback' => array($this, 'check_remote_permission'),
+            ),
+            array(
+                'methods' => 'POST',
+                'callback' => array($this, 'handle_sse_message'),
+                'permission_callback' => array($this, 'check_remote_permission'),
+            ),
         ));
 
         // Endpoint OAuth2
@@ -465,39 +472,74 @@ class WP_Claude_MCP_REST_API {
     }
 
     /**
-     * Handler para SSE Stream
+     * Handler para mensagens POST enviadas ao SSE
+     */
+    public function handle_sse_message($request) {
+        header('Access-Control-Allow-Origin: *');
+        header('Content-Type: application/json');
+
+        $body = $request->get_json_params();
+
+        if (!$body) {
+            return new WP_Error('invalid_request', 'Corpo da requisição inválido', array('status' => 400));
+        }
+
+        // Processa como requisição MCP padrão
+        return $this->handle_mcp_request($request);
+    }
+
+    /**
+     * Handler para SSE Stream - Remote MCP Server via SSE
      */
     public function handle_sse_stream($request) {
         // Inicia stream SSE
         WP_Claude_MCP_SSE_Server::start_stream();
 
-        // Envia evento de conexão
-        WP_Claude_MCP_SSE_Server::send_event('connected', array(
-            'server' => 'WordPress MCP',
-            'version' => WP_CLAUDE_MCP_VERSION,
-            'time' => time(),
+        // Envia informações do servidor (discovery)
+        WP_Claude_MCP_SSE_Server::send_event('endpoint', array(
+            'jsonrpc' => '2.0',
+            'method' => 'initialize',
+            'result' => array(
+                'protocolVersion' => WP_Claude_MCP_Server::MCP_VERSION,
+                'serverInfo' => array(
+                    'name' => 'WordPress Claude MCP',
+                    'version' => WP_CLAUDE_MCP_VERSION,
+                ),
+                'capabilities' => array(
+                    'tools' => array(),
+                    'resources' => array(
+                        'subscribe' => false,
+                    ),
+                    'prompts' => array(),
+                ),
+            ),
         ));
 
-        // Obtém método e parâmetros
-        $method = $request->get_param('method');
-        $params_json = $request->get_param('params');
-        $params = $params_json ? json_decode($params_json, true) : array();
+        // Envia lista de ferramentas
+        $tools_response = WP_Claude_MCP_Server::list_tools();
+        WP_Claude_MCP_SSE_Server::send_event('message', array(
+            'jsonrpc' => '2.0',
+            'method' => 'tools/list',
+            'result' => $tools_response,
+        ));
 
-        if ($method) {
-            // Processa requisição
-            WP_Claude_MCP_SSE_Server::process_mcp_request($method, $params);
-        } else {
-            // Modo keep-alive
-            $counter = 0;
-            while ($counter < 60) { // 60 segundos máximo
+        // Mantém a conexão viva e aguarda mensagens
+        $counter = 0;
+        while ($counter < 300) { // 5 minutos máximo
+            // Envia ping a cada 10 segundos
+            if ($counter % 10 === 0) {
                 WP_Claude_MCP_SSE_Server::send_ping();
-                sleep(1);
-                $counter++;
+            }
 
-                // Verifica se cliente desconectou
-                if (connection_aborted()) {
-                    break;
-                }
+            // Verifica se há mensagens pendentes (via database ou file)
+            // Por enquanto, apenas mantém a conexão viva
+
+            sleep(1);
+            $counter++;
+
+            // Verifica se cliente desconectou
+            if (connection_aborted()) {
+                break;
             }
         }
 

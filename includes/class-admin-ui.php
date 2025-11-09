@@ -24,8 +24,20 @@ class WP_Claude_MCP_Admin_UI {
 
                 <p><strong><?php echo esc_html__('Copie estas URLs para conectar via Claude.ai:', 'wp-claude-mcp'); ?></strong></p>
 
+                <div style="background: #fff; padding: 15px; margin: 10px 0; border-radius: 4px; border: 2px solid #00a32a;">
+                    <strong><?php echo esc_html__('⚡ SSE Streaming URL (RECOMENDADA - Conexão Direta):', 'wp-claude-mcp'); ?></strong><br>
+                    <code style="font-size: 13px; word-break: break-all; display: block; margin: 5px 0;" id="sse-url-template"><?php echo esc_url(rest_url('wp/v2/claude-mcp/sse')); ?>?token=SEU_TOKEN_AQUI</code>
+                    <button class="button button-small" onclick="navigator.clipboard.writeText(document.getElementById('sse-url-template').textContent)">
+                        <?php echo esc_html__('📋 Copiar Template', 'wp-claude-mcp'); ?>
+                    </button>
+                    <p style="margin: 10px 0 0 0; font-size: 12px; color: #00a32a; font-weight: bold;">
+                        <?php echo esc_html__('✅ Use esta URL no Claude Web! Conexão direta com token na URL.', 'wp-claude-mcp'); ?><br>
+                        <?php echo esc_html__('💡 Após gerar um token, a URL completa aparecerá automaticamente!', 'wp-claude-mcp'); ?>
+                    </p>
+                </div>
+
                 <div style="background: #fff; padding: 15px; margin: 10px 0; border-radius: 4px;">
-                    <strong><?php echo esc_html__('🔗 Remote MCP Server URL (Básica):', 'wp-claude-mcp'); ?></strong><br>
+                    <strong><?php echo esc_html__('🔗 Remote MCP Server URL (Alternativa - Requer Header):', 'wp-claude-mcp'); ?></strong><br>
                     <code style="font-size: 13px; word-break: break-all; display: block; margin: 5px 0;"><?php echo esc_url(rest_url('wp/v2/claude-mcp/remote')); ?></code>
                     <button class="button button-small" onclick="navigator.clipboard.writeText('<?php echo esc_js(rest_url('wp/v2/claude-mcp/remote')); ?>')">
                         <?php echo esc_html__('📋 Copiar', 'wp-claude-mcp'); ?>
@@ -35,34 +47,25 @@ class WP_Claude_MCP_Admin_UI {
                     </p>
                 </div>
 
-                <div style="background: #fff; padding: 15px; margin: 10px 0; border-radius: 4px; border: 2px solid #00a32a;">
-                    <strong><?php echo esc_html__('⚡ SSE Streaming URL (Recomendada):', 'wp-claude-mcp'); ?></strong><br>
-                    <code style="font-size: 13px; word-break: break-all; display: block; margin: 5px 0;" id="sse-url-template"><?php echo esc_url(rest_url('wp/v2/claude-mcp/sse')); ?>?token=SEU_TOKEN_AQUI</code>
-                    <button class="button button-small" onclick="navigator.clipboard.writeText(document.getElementById('sse-url-template').textContent)">
-                        <?php echo esc_html__('📋 Copiar Template', 'wp-claude-mcp'); ?>
-                    </button>
-                    <p style="margin: 10px 0 0 0; font-size: 12px; color: #00a32a; font-weight: bold;">
-                        <?php echo esc_html__('💡 Após gerar um token, a URL completa aparecerá automaticamente!', 'wp-claude-mcp'); ?>
-                    </p>
-                </div>
-
-                <h3><?php echo esc_html__('Passos para Conectar:', 'wp-claude-mcp'); ?></h3>
+                <h3><?php echo esc_html__('Passos para Conectar (MÉTODO RECOMENDADO - SSE):', 'wp-claude-mcp'); ?></h3>
                 <ol>
                     <li><strong><?php echo esc_html__('Crie um Token', 'wp-claude-mcp'); ?>:</strong>
                         <?php echo esc_html__('Use o formulário acima para gerar um novo token de acesso', 'wp-claude-mcp'); ?>
+                    </li>
+
+                    <li><strong><?php echo esc_html__('Copie a URL SSE completa', 'wp-claude-mcp'); ?>:</strong>
+                        <?php echo esc_html__('Após gerar o token, copie a URL SSE que aparece automaticamente (já inclui o token)', 'wp-claude-mcp'); ?>
                     </li>
 
                     <li><strong><?php echo esc_html__('Acesse Claude.ai', 'wp-claude-mcp'); ?>:</strong>
                         <?php echo esc_html__('Vá em Configurações > Integrações > Model Context Protocol', 'wp-claude-mcp'); ?>
                     </li>
 
-                    <li><strong><?php echo esc_html__('Adicione o Servidor', 'wp-claude-mcp'); ?>:</strong>
+                    <li><strong><?php echo esc_html__('Adicione o Servidor SSE', 'wp-claude-mcp'); ?>:</strong>
                         <ul style="list-style-type: disc; margin-left: 20px; margin-top: 5px;">
                             <li><strong>Nome:</strong> <?php echo esc_html(get_bloginfo('name')); ?> (ou qualquer nome)</li>
-                            <li><strong>Remote MCP Server URL:</strong> Cole a URL acima</li>
-                            <li><strong>Autenticação:</strong> No header da requisição, adicione:
-                                <pre style="background: #fff; padding: 10px; margin: 5px 0;">Authorization: Bearer SEU_TOKEN_AQUI</pre>
-                            </li>
+                            <li><strong>SSE Server URL:</strong> Cole a URL SSE com token (ex: ...sse?token=xyz...)</li>
+                            <li><strong>Autenticação:</strong> ✅ Token já está na URL! Não precisa configurar header.</li>
                         </ul>
                     </li>
 
@@ -71,6 +74,7 @@ class WP_Claude_MCP_Admin_UI {
                         <ul style="list-style-type: disc; margin-left: 20px;">
                             <li>"Liste meus posts mais recentes"</li>
                             <li>"Mostre as estatísticas do meu site"</li>
+                            <li>"Crie um novo post sobre [tópico]"</li>
                         </ul>
                     </li>
                 </ol>
