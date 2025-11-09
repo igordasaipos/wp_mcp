@@ -66,6 +66,13 @@ class WP_Claude_MCP_REST_API {
             'permission_callback' => '__return_true',
         ));
 
+        // Endpoint de debug de token (apenas para admin)
+        register_rest_route(self::NAMESPACE, '/debug-token', array(
+            'methods' => 'GET',
+            'callback' => array($this, 'debug_token'),
+            'permission_callback' => array($this, 'check_admin_permission'),
+        ));
+
         // Endpoint para gerenciamento de tokens
         register_rest_route(self::NAMESPACE, '/tokens', array(
             array(
@@ -515,6 +522,87 @@ class WP_Claude_MCP_REST_API {
                 );
             }
         }
+
+        return rest_ensure_response($response);
+    }
+
+    /**
+     * Debug de token (apenas admin)
+     */
+    public function debug_token($request) {
+        global $wpdb;
+
+        header('Access-Control-Allow-Origin: *');
+        header('Content-Type: application/json');
+
+        $token = isset($_GET['token']) ? $_GET['token'] : '';
+
+        if (empty($token)) {
+            return rest_ensure_response(array(
+                'error' => 'Token não fornecido',
+                'usage' => '/debug-token?token=SEU_TOKEN',
+            ));
+        }
+
+        $response = array(
+            'token_provided' => $token,
+            'token_length' => strlen($token),
+            'token_sanitized' => sanitize_text_field($token),
+            'token_sanitized_length' => strlen(sanitize_text_field($token)),
+            'tokens_match' => ($token === sanitize_text_field($token)),
+        );
+
+        // Calcula o hash
+        $token_hash = hash('sha256', $token);
+        $token_hash_sanitized = hash('sha256', sanitize_text_field($token));
+
+        $response['token_hash'] = $token_hash;
+        $response['token_hash_sanitized'] = $token_hash_sanitized;
+        $response['hashes_match'] = ($token_hash === $token_hash_sanitized);
+
+        // Busca no banco
+        $table_name = $wpdb->prefix . 'claude_mcp_tokens';
+
+        $token_data = $wpdb->get_row($wpdb->prepare(
+            "SELECT id, user_id, token_name, created_at, expires_at, is_active, last_used FROM $table_name WHERE token_hash = %s",
+            $token_hash
+        ));
+
+        if ($token_data) {
+            $response['database_found'] = true;
+            $response['database_data'] = array(
+                'id' => $token_data->id,
+                'user_id' => $token_data->user_id,
+                'token_name' => $token_data->token_name,
+                'is_active' => $token_data->is_active,
+                'created_at' => $token_data->created_at,
+                'expires_at' => $token_data->expires_at,
+                'last_used' => $token_data->last_used,
+                'is_expired' => ($token_data->expires_at && strtotime($token_data->expires_at) < time()),
+            );
+        } else {
+            $response['database_found'] = false;
+
+            // Tenta com hash sanitizado
+            $token_data_sanitized = $wpdb->get_row($wpdb->prepare(
+                "SELECT id, user_id, token_name FROM $table_name WHERE token_hash = %s",
+                $token_hash_sanitized
+            ));
+
+            if ($token_data_sanitized) {
+                $response['found_with_sanitized_hash'] = true;
+                $response['database_data'] = $token_data_sanitized;
+            } else {
+                $response['found_with_sanitized_hash'] = false;
+            }
+        }
+
+        // Lista todos os tokens (apenas hash para segurança)
+        $all_tokens = $wpdb->get_results(
+            "SELECT id, token_name, SUBSTRING(token_hash, 1, 16) as hash_prefix, is_active, created_at, expires_at FROM $table_name ORDER BY created_at DESC LIMIT 10"
+        );
+
+        $response['all_tokens_sample'] = $all_tokens;
 
         return rest_ensure_response($response);
     }
