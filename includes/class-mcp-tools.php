@@ -13,7 +13,7 @@ class WP_Claude_MCP_Tools {
      * Retorna todas as ferramentas disponíveis
      */
     public static function get_available_tools() {
-        return array(
+        $basic_tools = array(
             // Posts
             array(
                 'name' => 'wordpress_search_posts',
@@ -213,6 +213,11 @@ class WP_Claude_MCP_Tools {
                 ),
             ),
         );
+
+        // Adiciona ferramentas avançadas
+        $advanced_tools = WP_Claude_MCP_Advanced_Tools::get_advanced_tools();
+
+        return array_merge($basic_tools, $advanced_tools);
     }
 
     /**
@@ -221,8 +226,15 @@ class WP_Claude_MCP_Tools {
     public static function execute_tool($tool_name, $arguments = array()) {
         $method_name = 'tool_' . str_replace('wordpress_', '', $tool_name);
 
+        // Tenta executar ferramenta básica
         if (method_exists(__CLASS__, $method_name)) {
             return call_user_func(array(__CLASS__, $method_name), $arguments);
+        }
+
+        // Tenta executar ferramenta avançada
+        $result = WP_Claude_MCP_Advanced_Tools::execute_tool($tool_name, $arguments);
+        if (!is_wp_error($result) || $result->get_error_code() !== 'invalid_tool') {
+            return $result;
         }
 
         return new WP_Error('invalid_tool', 'Ferramenta não encontrada');

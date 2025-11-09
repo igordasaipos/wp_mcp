@@ -32,6 +32,13 @@ class WP_Claude_MCP_REST_API {
             'permission_callback' => array($this, 'check_remote_permission'),
         ));
 
+        // Endpoint SSE para streaming
+        register_rest_route(self::NAMESPACE, '/sse', array(
+            'methods' => 'GET',
+            'callback' => array($this, 'handle_sse_stream'),
+            'permission_callback' => array($this, 'check_remote_permission'),
+        ));
+
         // Endpoint OAuth2
         register_rest_route(self::NAMESPACE, '/oauth/authorize', array(
             'methods' => 'GET',
@@ -419,5 +426,45 @@ class WP_Claude_MCP_REST_API {
         update_option('wp_claude_mcp_oauth_settings', $settings);
 
         return rest_ensure_response(array('success' => true, 'settings' => $settings));
+    }
+
+    /**
+     * Handler para SSE Stream
+     */
+    public function handle_sse_stream($request) {
+        // Inicia stream SSE
+        WP_Claude_MCP_SSE_Server::start_stream();
+
+        // Envia evento de conexão
+        WP_Claude_MCP_SSE_Server::send_event('connected', array(
+            'server' => 'WordPress MCP',
+            'version' => WP_CLAUDE_MCP_VERSION,
+            'time' => time(),
+        ));
+
+        // Obtém método e parâmetros
+        $method = $request->get_param('method');
+        $params_json = $request->get_param('params');
+        $params = $params_json ? json_decode($params_json, true) : array();
+
+        if ($method) {
+            // Processa requisição
+            WP_Claude_MCP_SSE_Server::process_mcp_request($method, $params);
+        } else {
+            // Modo keep-alive
+            $counter = 0;
+            while ($counter < 60) { // 60 segundos máximo
+                WP_Claude_MCP_SSE_Server::send_ping();
+                sleep(1);
+                $counter++;
+
+                // Verifica se cliente desconectou
+                if (connection_aborted()) {
+                    break;
+                }
+            }
+        }
+
+        exit;
     }
 }
