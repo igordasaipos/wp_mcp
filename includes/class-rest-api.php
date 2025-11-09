@@ -138,7 +138,13 @@ class WP_Claude_MCP_REST_API {
             return true;
         }
 
-        // Verifica Bearer token
+        // Permite GET sem autenticação (discovery endpoint)
+        // Claude precisa descobrir as capacidades antes de autenticar
+        if ($request->get_method() === 'GET') {
+            return true;
+        }
+
+        // Para POST (execução de ferramentas), requer autenticação
         $auth = WP_Claude_MCP_JWT_Auth::authenticate_request();
 
         if (!$auth) {
@@ -297,6 +303,8 @@ class WP_Claude_MCP_REST_API {
 
         // Para GET, retorna lista de ferramentas (discovery endpoint)
         if ($request->get_method() === 'GET') {
+            $tools_response = WP_Claude_MCP_Server::list_tools();
+
             return rest_ensure_response(array(
                 'serverInfo' => WP_Claude_MCP_Server::get_server_info(),
                 'capabilities' => array(
@@ -304,7 +312,7 @@ class WP_Claude_MCP_REST_API {
                     'resources' => array(),
                     'prompts' => array(),
                 ),
-                'tools' => WP_Claude_MCP_Server::list_tools(),
+                'tools' => isset($tools_response['tools']) ? $tools_response['tools'] : array(),
             ));
         }
 
