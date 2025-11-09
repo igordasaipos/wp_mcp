@@ -123,27 +123,6 @@ class WP_Claude_MCP_REST_API {
     }
 
     /**
-     * Verifica permissão MCP (via JWT)
-     */
-    public function check_mcp_permission($request) {
-        $auth = WP_Claude_MCP_JWT_Auth::authenticate_request();
-
-        if (!$auth) {
-            return new WP_Error(
-                'unauthorized',
-                'Token de autenticação inválido ou ausente',
-                array('status' => 401)
-            );
-        }
-
-        // Armazena as informações de autenticação na requisição
-        $request->set_param('_auth_user_id', $auth['user_id']);
-        $request->set_param('_auth_capabilities', $auth['capabilities']);
-
-        return true;
-    }
-
-    /**
      * Verifica permissão MCP (autenticação via token)
      */
     public function check_mcp_permission($request) {
