@@ -150,7 +150,10 @@ class WP_Claude_MCP_JWT_Auth {
 
         // Se não encontrou no header, tenta pegar do query parameter
         if (!$token && isset($_GET['token'])) {
-            $token = sanitize_text_field($_GET['token']);
+            // Usa wp_unslash ao invés de sanitize_text_field para não quebrar o token hex
+            $token = wp_unslash($_GET['token']);
+            // Remove apenas caracteres perigosos mas mantém o token hex intacto
+            $token = preg_replace('/[^a-f0-9]/i', '', $token);
         }
 
         // Se não encontrou token em nenhum lugar
