@@ -18,11 +18,38 @@ class WP_Claude_MCP_REST_API {
      * Registra as rotas da REST API
      */
     public function register_routes() {
-        // Endpoint principal do MCP
+        // Endpoint principal do MCP (Claude Desktop)
         register_rest_route(self::NAMESPACE, '/mcp', array(
             'methods' => 'POST',
             'callback' => array($this, 'handle_mcp_request'),
             'permission_callback' => array($this, 'check_mcp_permission'),
+        ));
+
+        // Endpoint público para Remote MCP Server (Claude Web)
+        register_rest_route(self::NAMESPACE, '/remote', array(
+            'methods' => array('GET', 'POST', 'OPTIONS'),
+            'callback' => array($this, 'handle_remote_mcp'),
+            'permission_callback' => array($this, 'check_remote_permission'),
+        ));
+
+        // Endpoint OAuth2
+        register_rest_route(self::NAMESPACE, '/oauth/authorize', array(
+            'methods' => 'GET',
+            'callback' => array($this, 'oauth_authorize'),
+            'permission_callback' => '__return_true',
+        ));
+
+        register_rest_route(self::NAMESPACE, '/oauth/token', array(
+            'methods' => 'POST',
+            'callback' => array($this, 'oauth_token'),
+            'permission_callback' => '__return_true',
+        ));
+
+        // Endpoint de configuração pública
+        register_rest_route(self::NAMESPACE, '/config', array(
+            'methods' => 'GET',
+            'callback' => array($this, 'get_public_config'),
+            'permission_callback' => '__return_true',
         ));
 
         // Endpoint para gerenciamento de tokens
@@ -44,6 +71,20 @@ class WP_Claude_MCP_REST_API {
             'callback' => array($this, 'delete_token'),
             'permission_callback' => array($this, 'check_admin_permission'),
         ));
+
+        // Endpoint para OAuth settings
+        register_rest_route(self::NAMESPACE, '/oauth-settings', array(
+            array(
+                'methods' => 'GET',
+                'callback' => array($this, 'get_oauth_settings'),
+                'permission_callback' => array($this, 'check_admin_permission'),
+            ),
+            array(
+                'methods' => 'POST',
+                'callback' => array($this, 'save_oauth_settings'),
+                'permission_callback' => array($this, 'check_admin_permission'),
+            ),
+        ));
     }
 
     /**
@@ -64,6 +105,30 @@ class WP_Claude_MCP_REST_API {
         $request->set_param('_auth_user_id', $auth['user_id']);
         $request->set_param('_auth_capabilities', $auth['capabilities']);
 
+        return true;
+    }
+
+    /**
+     * Verifica permissão para Remote MCP (Claude Web)
+     */
+    public function check_remote_permission($request) {
+        // Permite OPTIONS para CORS
+        if ($request->get_method() === 'OPTIONS') {
+            return true;
+        }
+
+        // Verifica Bearer token
+        $auth = WP_Claude_MCP_JWT_Auth::authenticate_request();
+
+        if (!$auth) {
+            return new WP_Error(
+                'unauthorized',
+                'Token de autenticação inválido ou ausente',
+                array('status' => 401)
+            );
+        }
+
+        $request->set_param('_auth_user_id', $auth['user_id']);
         return true;
     }
 
@@ -193,5 +258,166 @@ class WP_Claude_MCP_REST_API {
         }
 
         return rest_ensure_response(array('success' => true));
+    }
+
+    /**
+     * Handler para Remote MCP Server (Claude Web)
+     */
+    public function handle_remote_mcp($request) {
+        // Adiciona headers CORS
+        header('Access-Control-Allow-Origin: *');
+        header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
+        header('Access-Control-Allow-Headers: Authorization, Content-Type');
+
+        if ($request->get_method() === 'OPTIONS') {
+            return rest_ensure_response(array('status' => 'ok'));
+        }
+
+        // Para GET, retorna informações do servidor
+        if ($request->get_method() === 'GET') {
+            return rest_ensure_response(array(
+                'name' => 'WordPress MCP Server',
+                'version' => WP_CLAUDE_MCP_VERSION,
+                'protocol' => WP_Claude_MCP_Server::MCP_VERSION,
+                'status' => 'active',
+                'site' => get_bloginfo('name'),
+                'url' => get_site_url(),
+            ));
+        }
+
+        // Para POST, processa requisições MCP
+        return $this->handle_mcp_request($request);
+    }
+
+    /**
+     * Retorna configuração pública
+     */
+    public function get_public_config($request) {
+        header('Access-Control-Allow-Origin: *');
+
+        return rest_ensure_response(array(
+            'server_url' => rest_url('wp/v2/claude-mcp/remote'),
+            'oauth_authorize_url' => rest_url('wp/v2/claude-mcp/oauth/authorize'),
+            'oauth_token_url' => rest_url('wp/v2/claude-mcp/oauth/token'),
+            'site_name' => get_bloginfo('name'),
+            'site_url' => get_site_url(),
+        ));
+    }
+
+    /**
+     * OAuth: Autorização
+     */
+    public function oauth_authorize($request) {
+        $client_id = $request->get_param('client_id');
+        $redirect_uri = $request->get_param('redirect_uri');
+        $state = $request->get_param('state');
+
+        if (!$client_id || !$redirect_uri) {
+            return new WP_Error('invalid_request', 'client_id e redirect_uri são obrigatórios');
+        }
+
+        // Verifica se o usuário está logado
+        if (!is_user_logged_in()) {
+            wp_redirect(wp_login_url(add_query_arg($_GET, rest_url('wp/v2/claude-mcp/oauth/authorize'))));
+            exit;
+        }
+
+        // Gera código de autorização
+        $code = bin2hex(random_bytes(32));
+        set_transient('wp_claude_mcp_oauth_code_' . $code, array(
+            'client_id' => $client_id,
+            'user_id' => get_current_user_id(),
+            'redirect_uri' => $redirect_uri,
+        ), 600); // 10 minutos
+
+        // Redireciona com o código
+        $redirect = add_query_arg(array(
+            'code' => $code,
+            'state' => $state,
+        ), $redirect_uri);
+
+        wp_redirect($redirect);
+        exit;
+    }
+
+    /**
+     * OAuth: Token
+     */
+    public function oauth_token($request) {
+        $grant_type = $request->get_param('grant_type');
+        $code = $request->get_param('code');
+        $client_id = $request->get_param('client_id');
+        $client_secret = $request->get_param('client_secret');
+
+        if ($grant_type !== 'authorization_code') {
+            return new WP_Error('unsupported_grant_type', 'Apenas authorization_code é suportado');
+        }
+
+        // Valida o código
+        $code_data = get_transient('wp_claude_mcp_oauth_code_' . $code);
+        if (!$code_data) {
+            return new WP_Error('invalid_code', 'Código inválido ou expirado');
+        }
+
+        // Valida client_id
+        $oauth_settings = get_option('wp_claude_mcp_oauth_settings', array());
+        if (empty($oauth_settings['client_id']) || $oauth_settings['client_id'] !== $client_id) {
+            return new WP_Error('invalid_client', 'client_id inválido');
+        }
+
+        // Valida client_secret se configurado
+        if (!empty($oauth_settings['client_secret']) && $oauth_settings['client_secret'] !== $client_secret) {
+            return new WP_Error('invalid_client', 'client_secret inválido');
+        }
+
+        // Deleta o código usado
+        delete_transient('wp_claude_mcp_oauth_code_' . $code);
+
+        // Gera token de acesso
+        $token_result = WP_Claude_MCP_JWT_Auth::generate_token(
+            $code_data['user_id'],
+            'OAuth Token - ' . date('Y-m-d H:i:s'),
+            array(),
+            '+1 year'
+        );
+
+        if (!$token_result) {
+            return new WP_Error('token_generation_failed', 'Falha ao gerar token');
+        }
+
+        return rest_ensure_response(array(
+            'access_token' => $token_result['token'],
+            'token_type' => 'Bearer',
+            'expires_in' => 31536000, // 1 ano
+        ));
+    }
+
+    /**
+     * Obtém configurações OAuth
+     */
+    public function get_oauth_settings($request) {
+        $settings = get_option('wp_claude_mcp_oauth_settings', array(
+            'client_id' => '',
+            'client_secret' => '',
+        ));
+
+        return rest_ensure_response($settings);
+    }
+
+    /**
+     * Salva configurações OAuth
+     */
+    public function save_oauth_settings($request) {
+        $client_id = $request->get_param('client_id');
+        $client_secret = $request->get_param('client_secret');
+
+        $settings = array(
+            'client_id' => sanitize_text_field($client_id),
+            'client_secret' => sanitize_text_field($client_secret),
+        );
+
+        update_option('wp_claude_mcp_oauth_settings', $settings);
+
+        return rest_ensure_response(array('success' => true, 'settings' => $settings));
     }
 }

@@ -19,8 +19,51 @@ class WP_Claude_MCP_Admin_UI {
 
             <div id="wp-claude-mcp-admin-root"></div>
 
-            <div class="wp-claude-mcp-info-box" style="max-width: 800px; margin-top: 30px; padding: 20px; background: #f0f0f1; border-left: 4px solid #2271b1;">
-                <h2><?php echo esc_html__('Como Conectar ao Claude Desktop', 'wp-claude-mcp'); ?></h2>
+            <div class="wp-claude-mcp-info-box" style="max-width: 800px; margin-top: 30px; padding: 20px; background: #d5e8d4; border-left: 4px solid #00a32a;">
+                <h2>🌐 <?php echo esc_html__('Como Conectar ao Claude Web', 'wp-claude-mcp'); ?></h2>
+
+                <p><strong><?php echo esc_html__('Use esta URL para conectar via Claude.ai (navegador):', 'wp-claude-mcp'); ?></strong></p>
+
+                <div style="background: #fff; padding: 15px; margin: 10px 0; border-radius: 4px; font-size: 16px;">
+                    <strong><?php echo esc_html__('Remote MCP Server URL:', 'wp-claude-mcp'); ?></strong><br>
+                    <code style="font-size: 14px; word-break: break-all;"><?php echo esc_url(rest_url('wp/v2/claude-mcp/remote')); ?></code>
+                    <button class="button button-small" onclick="navigator.clipboard.writeText('<?php echo esc_js(rest_url('wp/v2/claude-mcp/remote')); ?>')" style="margin-left: 10px;">
+                        <?php echo esc_html__('📋 Copiar URL', 'wp-claude-mcp'); ?>
+                    </button>
+                </div>
+
+                <h3><?php echo esc_html__('Passos para Conectar:', 'wp-claude-mcp'); ?></h3>
+                <ol>
+                    <li><strong><?php echo esc_html__('Crie um Token', 'wp-claude-mcp'); ?>:</strong>
+                        <?php echo esc_html__('Use o formulário acima para gerar um novo token de acesso', 'wp-claude-mcp'); ?>
+                    </li>
+
+                    <li><strong><?php echo esc_html__('Acesse Claude.ai', 'wp-claude-mcp'); ?>:</strong>
+                        <?php echo esc_html__('Vá em Configurações > Integrações > Model Context Protocol', 'wp-claude-mcp'); ?>
+                    </li>
+
+                    <li><strong><?php echo esc_html__('Adicione o Servidor', 'wp-claude-mcp'); ?>:</strong>
+                        <ul style="list-style-type: disc; margin-left: 20px; margin-top: 5px;">
+                            <li><strong>Nome:</strong> <?php echo esc_html(get_bloginfo('name')); ?> (ou qualquer nome)</li>
+                            <li><strong>Remote MCP Server URL:</strong> Cole a URL acima</li>
+                            <li><strong>Autenticação:</strong> No header da requisição, adicione:
+                                <pre style="background: #fff; padding: 10px; margin: 5px 0;">Authorization: Bearer SEU_TOKEN_AQUI</pre>
+                            </li>
+                        </ul>
+                    </li>
+
+                    <li><strong><?php echo esc_html__('Teste a Conexão', 'wp-claude-mcp'); ?>:</strong>
+                        <?php echo esc_html__('No Claude, experimente:', 'wp-claude-mcp'); ?>
+                        <ul style="list-style-type: disc; margin-left: 20px;">
+                            <li>"Liste meus posts mais recentes"</li>
+                            <li>"Mostre as estatísticas do meu site"</li>
+                        </ul>
+                    </li>
+                </ol>
+            </div>
+
+            <div class="wp-claude-mcp-info-box" style="max-width: 800px; margin-top: 20px; padding: 20px; background: #f0f0f1; border-left: 4px solid #2271b1;">
+                <h2>💻 <?php echo esc_html__('Como Conectar ao Claude Desktop', 'wp-claude-mcp'); ?></h2>
 
                 <ol>
                     <li><strong><?php echo esc_html__('Crie um Token', 'wp-claude-mcp'); ?>:</strong>
@@ -64,15 +107,33 @@ class WP_Claude_MCP_Admin_UI {
             </div>
 
             <div class="wp-claude-mcp-api-info" style="max-width: 800px; margin-top: 20px; padding: 20px; background: #f0f0f1;">
-                <h2><?php echo esc_html__('Informações da API', 'wp-claude-mcp'); ?></h2>
+                <h2><?php echo esc_html__('📡 Endpoints da API', 'wp-claude-mcp'); ?></h2>
 
                 <table class="form-table">
                     <tr>
-                        <th><?php echo esc_html__('Endpoint MCP', 'wp-claude-mcp'); ?>:</th>
+                        <th><?php echo esc_html__('Remote MCP Server (Claude Web)', 'wp-claude-mcp'); ?>:</th>
                         <td>
-                            <code><?php echo esc_url(rest_url('wp/v2/claude-mcp/mcp')); ?></code>
+                            <code style="font-size: 13px;"><?php echo esc_url(rest_url('wp/v2/claude-mcp/remote')); ?></code>
+                            <button class="button button-small" onclick="navigator.clipboard.writeText('<?php echo esc_js(rest_url('wp/v2/claude-mcp/remote')); ?>')">
+                                <?php echo esc_html__('Copiar', 'wp-claude-mcp'); ?>
+                            </button>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th><?php echo esc_html__('Endpoint MCP (Claude Desktop)', 'wp-claude-mcp'); ?>:</th>
+                        <td>
+                            <code style="font-size: 13px;"><?php echo esc_url(rest_url('wp/v2/claude-mcp/mcp')); ?></code>
                             <button class="button button-small" onclick="navigator.clipboard.writeText('<?php echo esc_js(rest_url('wp/v2/claude-mcp/mcp')); ?>')">
                                 <?php echo esc_html__('Copiar', 'wp-claude-mcp'); ?>
+                            </button>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th><?php echo esc_html__('Config Pública', 'wp-claude-mcp'); ?>:</th>
+                        <td>
+                            <code style="font-size: 13px;"><?php echo esc_url(rest_url('wp/v2/claude-mcp/config')); ?></code>
+                            <button class="button button-small" onclick="window.open('<?php echo esc_js(rest_url('wp/v2/claude-mcp/config')); ?>', '_blank')">
+                                <?php echo esc_html__('Abrir', 'wp-claude-mcp'); ?>
                             </button>
                         </td>
                     </tr>

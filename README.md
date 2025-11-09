@@ -45,19 +45,28 @@ Este plugin implementa o Model Context Protocol (MCP) para WordPress, permitindo
 
 ## 🔧 Instalação
 
+### Opção 1: Instalação Manual
+
 1. **Baixe o plugin:**
    ```bash
-   git clone https://github.com/igordasaipos/wp_mcp.git
+   git clone https://github.com/igordasaipos/wp_mcp.git wp-claude-mcp
    ```
 
 2. **Faça upload para o WordPress:**
-   - Copie a pasta para `wp-content/plugins/wp-claude-mcp/`
-   - Ou faça upload do arquivo ZIP através do painel do WordPress
+   - Copie a pasta `wp-claude-mcp` para `wp-content/plugins/`
+   - Ou crie um arquivo ZIP e faça upload através do painel do WordPress (Plugins > Adicionar Novo > Enviar Plugin)
 
 3. **Ative o plugin:**
    - Acesse o painel do WordPress
    - Vá em Plugins > Plugins Instalados
    - Ative "WordPress Claude MCP Integration"
+
+### Opção 2: Upload Direto
+
+1. Baixe o repositório como ZIP
+2. No WordPress, vá em Plugins > Adicionar Novo > Enviar Plugin
+3. Escolha o arquivo ZIP e clique em "Instalar Agora"
+4. Ative o plugin
 
 ## 🔑 Configuração
 
@@ -65,10 +74,49 @@ Este plugin implementa o Model Context Protocol (MCP) para WordPress, permitindo
 
 1. No painel do WordPress, vá em **Claude MCP**
 2. Preencha o formulário "Criar Novo Token de Acesso":
-   - **Nome do Token**: Um nome descritivo (ex: "Claude Desktop - Meu Computador")
+   - **Nome do Token**: Um nome descritivo (ex: "Claude Web - Meu Navegador")
    - **Validade**: Escolha por quanto tempo o token será válido
 3. Clique em **"Gerar Token"**
 4. **IMPORTANTE**: Copie o token imediatamente! Por segurança, você não poderá vê-lo novamente.
+
+---
+
+## 🌐 Conectar ao Claude Web (Navegador)
+
+**Esta é a forma MAIS FÁCIL de conectar!**
+
+### Passos:
+
+1. **Crie um token** (conforme instruções acima)
+
+2. **Acesse Claude.ai:**
+   - Vá em **Configurações** (Settings)
+   - Selecione **Integrações** (Integrations)
+   - Clique em **Model Context Protocol (MCP)**
+
+3. **Adicione o servidor:**
+   - **Nome:** Meu WordPress (ou qualquer nome)
+   - **Remote MCP Server URL:**
+     ```
+     https://seu-site.com/wp-json/wp/v2/claude-mcp/remote
+     ```
+     *(Copie a URL exata do painel do plugin)*
+
+4. **Configure a autenticação:**
+   - No campo de headers/autenticação, adicione:
+     ```
+     Authorization: Bearer SEU_TOKEN_AQUI
+     ```
+   - Substitua `SEU_TOKEN_AQUI` pelo token que você copiou
+
+5. **Salve e teste!**
+   - No chat do Claude, experimente:
+     - "Liste meus posts mais recentes"
+     - "Mostre as estatísticas do meu site"
+
+---
+
+## 💻 Conectar ao Claude Desktop
 
 ### 2. Configurar o Claude Desktop
 
