@@ -289,20 +289,22 @@ class WP_Claude_MCP_REST_API {
         header('Access-Control-Allow-Origin: *');
         header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
         header('Access-Control-Allow-Headers: Authorization, Content-Type');
+        header('Content-Type: application/json');
 
         if ($request->get_method() === 'OPTIONS') {
             return rest_ensure_response(array('status' => 'ok'));
         }
 
-        // Para GET, retorna informações do servidor
+        // Para GET, retorna lista de ferramentas (discovery endpoint)
         if ($request->get_method() === 'GET') {
             return rest_ensure_response(array(
-                'name' => 'WordPress MCP Server',
-                'version' => WP_CLAUDE_MCP_VERSION,
-                'protocol' => WP_Claude_MCP_Server::MCP_VERSION,
-                'status' => 'active',
-                'site' => get_bloginfo('name'),
-                'url' => get_site_url(),
+                'serverInfo' => WP_Claude_MCP_Server::get_server_info(),
+                'capabilities' => array(
+                    'tools' => array(),
+                    'resources' => array(),
+                    'prompts' => array(),
+                ),
+                'tools' => WP_Claude_MCP_Server::list_tools(),
             ));
         }
 
