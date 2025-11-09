@@ -59,6 +59,13 @@ class WP_Claude_MCP_REST_API {
             'permission_callback' => '__return_true',
         ));
 
+        // Endpoint de teste de conexão
+        register_rest_route(self::NAMESPACE, '/test', array(
+            'methods' => 'GET',
+            'callback' => array($this, 'test_connection'),
+            'permission_callback' => '__return_true',
+        ));
+
         // Endpoint para gerenciamento de tokens
         register_rest_route(self::NAMESPACE, '/tokens', array(
             array(
@@ -466,5 +473,49 @@ class WP_Claude_MCP_REST_API {
         }
 
         exit;
+    }
+
+    /**
+     * Testa a conexão e valida o token
+     */
+    public function test_connection($request) {
+        header('Access-Control-Allow-Origin: *');
+        header('Content-Type: application/json');
+
+        $response = array(
+            'status' => 'ok',
+            'message' => 'Servidor MCP está funcionando',
+            'endpoints' => array(
+                'remote' => rest_url('wp/v2/claude-mcp/remote'),
+                'sse' => rest_url('wp/v2/claude-mcp/sse'),
+                'mcp' => rest_url('wp/v2/claude-mcp/mcp'),
+            ),
+            'version' => WP_CLAUDE_MCP_VERSION,
+            'site' => get_bloginfo('name'),
+        );
+
+        // Tenta validar o token se fornecido
+        $auth = WP_Claude_MCP_JWT_Auth::authenticate_request();
+
+        if ($auth) {
+            $response['token_valid'] = true;
+            $response['user_id'] = $auth['user_id'];
+            $user = get_userdata($auth['user_id']);
+            $response['user_login'] = $user->user_login;
+            $response['user_roles'] = $user->roles;
+        } else {
+            $response['token_valid'] = false;
+            $response['token_provided'] = isset($_GET['token']) || isset($_SERVER['HTTP_AUTHORIZATION']);
+
+            // Informações de debug
+            if (isset($_GET['token'])) {
+                $response['debug'] = array(
+                    'token_length' => strlen($_GET['token']),
+                    'token_prefix' => substr($_GET['token'], 0, 8) . '...',
+                );
+            }
+        }
+
+        return rest_ensure_response($response);
     }
 }
