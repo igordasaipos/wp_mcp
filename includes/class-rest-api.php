@@ -304,15 +304,27 @@ class WP_Claude_MCP_REST_API {
         // Para GET, retorna lista de ferramentas (discovery endpoint)
         if ($request->get_method() === 'GET') {
             $tools_response = WP_Claude_MCP_Server::list_tools();
+            $server_info = WP_Claude_MCP_Server::get_server_info();
 
             return rest_ensure_response(array(
-                'serverInfo' => WP_Claude_MCP_Server::get_server_info(),
+                'protocolVersion' => WP_Claude_MCP_Server::MCP_VERSION,
+                'serverInfo' => array(
+                    'name' => $server_info['name'],
+                    'version' => $server_info['version'],
+                ),
                 'capabilities' => array(
                     'tools' => array(),
-                    'resources' => array(),
+                    'resources' => array(
+                        'subscribe' => false,
+                    ),
                     'prompts' => array(),
                 ),
                 'tools' => isset($tools_response['tools']) ? $tools_response['tools'] : array(),
+                'authentication' => array(
+                    'type' => 'bearer',
+                    'required' => true,
+                    'description' => 'Bearer token authentication required for tool execution. Add your token in the Authorization header as: Bearer YOUR_TOKEN',
+                ),
             ));
         }
 
