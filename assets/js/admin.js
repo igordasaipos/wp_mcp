@@ -228,7 +228,7 @@
                             className: 'wp-claude-mcp-token-value',
                             style: { background: '#d5e8d4', borderColor: '#00a32a' }
                         },
-                        wpClaudeMCP.siteUrl + '/wp-json/wp/v2/claude-mcp/sse?token=' + newToken.token
+                        wpClaudeMCP.siteUrl + '/wp-json/mcp/v1/sse?token=' + newToken.token
                     ),
                     wp.element.createElement(
                         'button',
@@ -247,7 +247,7 @@
                     wp.element.createElement(
                         'div',
                         { className: 'wp-claude-mcp-token-value' },
-                        wpClaudeMCP.siteUrl + '/wp-json/wp/v2/claude-mcp/remote'
+                        wpClaudeMCP.siteUrl + '/wp-json/mcp/v1/messages'
                     ),
                     wp.element.createElement(
                         'button',

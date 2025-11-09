@@ -10,9 +10,9 @@ if (!defined('ABSPATH')) {
 class WP_Claude_MCP_REST_API {
 
     /**
-     * Namespace da API
+     * Namespace da API (compatível com AI Engine pattern)
      */
-    const NAMESPACE = 'wp/v2/claude-mcp';
+    const NAMESPACE = 'mcp/v1';
 
     /**
      * Registra as rotas da REST API
@@ -25,24 +25,26 @@ class WP_Claude_MCP_REST_API {
             'permission_callback' => array($this, 'check_mcp_permission'),
         ));
 
-        // Endpoint público para Remote MCP Server (Claude Web)
-        register_rest_route(self::NAMESPACE, '/remote', array(
-            'methods' => array('GET', 'POST', 'OPTIONS'),
-            'callback' => array($this, 'handle_remote_mcp'),
-            'permission_callback' => array($this, 'check_remote_permission'),
-        ));
-
-        // Endpoint SSE para streaming (GET) e mensagens (POST)
+        // Endpoint SSE para streaming (igual AI Engine pattern)
         register_rest_route(self::NAMESPACE, '/sse', array(
             array(
                 'methods' => 'GET',
                 'callback' => array($this, 'handle_sse_stream'),
-                'permission_callback' => array($this, 'check_remote_permission'),
+                'permission_callback' => array($this, 'check_mcp_permission'),
             ),
             array(
+                'methods' => 'OPTIONS',
+                'callback' => array($this, 'handle_options'),
+                'permission_callback' => '__return_true',
+            ),
+        ));
+
+        // Endpoint para mensagens JSON-RPC (igual AI Engine pattern)
+        register_rest_route(self::NAMESPACE, '/messages', array(
+            array(
                 'methods' => 'POST',
-                'callback' => array($this, 'handle_sse_message'),
-                'permission_callback' => array($this, 'check_remote_permission'),
+                'callback' => array($this, 'handle_mcp_messages'),
+                'permission_callback' => array($this, 'check_mcp_permission'),
             ),
             array(
                 'methods' => 'OPTIONS',
@@ -142,32 +144,27 @@ class WP_Claude_MCP_REST_API {
     }
 
     /**
-     * Verifica permissão para Remote MCP (Claude Web)
+     * Verifica permissão MCP (autenticação via token)
      */
-    public function check_remote_permission($request) {
+    public function check_mcp_permission($request) {
         // Permite OPTIONS para CORS
         if ($request->get_method() === 'OPTIONS') {
             return true;
         }
 
-        // Permite GET sem autenticação (discovery endpoint)
-        // Claude precisa descobrir as capacidades antes de autenticar
-        if ($request->get_method() === 'GET') {
-            return true;
-        }
-
-        // Para POST (execução de ferramentas), requer autenticação
+        // Requer autenticação via token (query parameter ou header)
         $auth = WP_Claude_MCP_JWT_Auth::authenticate_request();
 
         if (!$auth) {
             return new WP_Error(
                 'unauthorized',
-                'Token de autenticação inválido ou ausente',
+                'Token de autenticação inválido ou ausente. Use ?token=SEU_TOKEN na URL ou Header Authorization: Bearer SEU_TOKEN',
                 array('status' => 401)
             );
         }
 
         $request->set_param('_auth_user_id', $auth['user_id']);
+        $request->set_param('_auth_capabilities', $auth['capabilities']);
         return true;
     }
 
@@ -351,11 +348,12 @@ class WP_Claude_MCP_REST_API {
         header('Access-Control-Allow-Origin: *');
 
         return rest_ensure_response(array(
-            'server_url' => rest_url('wp/v2/claude-mcp/remote'),
-            'oauth_authorize_url' => rest_url('wp/v2/claude-mcp/oauth/authorize'),
-            'oauth_token_url' => rest_url('wp/v2/claude-mcp/oauth/token'),
+            'sse_url' => rest_url(self::NAMESPACE . '/sse'),
+            'messages_url' => rest_url(self::NAMESPACE . '/messages'),
+            'mcp_url' => rest_url(self::NAMESPACE . '/mcp'),
             'site_name' => get_bloginfo('name'),
             'site_url' => get_site_url(),
+            'version' => WP_CLAUDE_MCP_VERSION,
         ));
     }
 
@@ -488,12 +486,13 @@ class WP_Claude_MCP_REST_API {
     }
 
     /**
-     * Handler para mensagens POST enviadas ao SSE (Streamable HTTP)
+     * Handler para /messages - Processa JSON-RPC calls (AI Engine pattern)
      */
-    public function handle_sse_message($request) {
+    public function handle_mcp_messages($request) {
         header('Access-Control-Allow-Origin: *');
-        header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
+        header('Access-Control-Allow-Methods: POST, OPTIONS');
         header('Access-Control-Allow-Headers: Content-Type, Accept, Authorization');
+        header('Content-Type: application/json');
 
         $body = $request->get_json_params();
 
@@ -501,61 +500,31 @@ class WP_Claude_MCP_REST_API {
             return new WP_Error('invalid_request', 'Corpo da requisição inválido', array('status' => 400));
         }
 
-        // Verifica o Accept header
-        $accept_header = $request->get_header('accept');
-        $supports_sse = strpos($accept_header, 'text/event-stream') !== false;
-
         // Processa a requisição MCP
         $result = $this->handle_mcp_request($request);
 
-        // Se o cliente aceita SSE E a requisição é assíncrona, retorna via SSE
-        if ($supports_sse && isset($body['method']) && in_array($body['method'], array('tools/call', 'resources/read'))) {
-            // Retorna via SSE para operações que podem ser longas
-            header('Content-Type: text/event-stream');
-            header('Cache-Control: no-cache');
-            header('Connection: keep-alive');
-
-            // Envia o resultado como evento SSE
-            $message = array(
-                'jsonrpc' => '2.0',
-                'id' => isset($body['id']) ? $body['id'] : null,
-                'result' => is_wp_error($result) ? null : $result,
-                'error' => is_wp_error($result) ? array(
-                    'code' => $result->get_error_code(),
-                    'message' => $result->get_error_message(),
-                ) : null,
-            );
-
-            echo "event: message\n";
-            echo "data: " . json_encode($message) . "\n\n";
-            flush();
-            exit;
-        }
-
-        // Caso contrário, retorna JSON normal
-        header('Content-Type: application/json');
-
+        // Retorna resposta JSON-RPC 2.0
         if (is_wp_error($result)) {
-            return array(
+            return rest_ensure_response(array(
                 'jsonrpc' => '2.0',
                 'id' => isset($body['id']) ? $body['id'] : null,
                 'error' => array(
                     'code' => $result->get_error_code(),
                     'message' => $result->get_error_message(),
                 ),
-            );
+            ));
         }
 
-        return array(
+        return rest_ensure_response(array(
             'jsonrpc' => '2.0',
             'id' => isset($body['id']) ? $body['id'] : null,
             'result' => $result,
-        );
+        ));
     }
 
     /**
-     * Handler para SSE Stream - Streamable HTTP (GET method)
-     * Conforme MCP Specification 2025-06-18
+     * Handler para SSE Stream (AI Engine pattern)
+     * Abre conexão SSE para comunicação bidirecional
      */
     public function handle_sse_stream($request) {
         // Inicia stream SSE
@@ -572,9 +541,9 @@ class WP_Claude_MCP_REST_API {
         set_time_limit(0);
         ignore_user_abort(false);
 
-        // Envia endpoint URL como primeiro evento
+        // Envia endpoint URL como primeiro evento (padrão AI Engine)
         echo "event: endpoint\n";
-        echo "data: " . rest_url('wp/v2/claude-mcp/sse') . "\n\n";
+        echo "data: " . rest_url(self::NAMESPACE . '/messages') . "\n\n";
         if (ob_get_level()) ob_flush();
         flush();
 
@@ -606,9 +575,9 @@ class WP_Claude_MCP_REST_API {
             'status' => 'ok',
             'message' => 'Servidor MCP está funcionando',
             'endpoints' => array(
-                'remote' => rest_url('wp/v2/claude-mcp/remote'),
-                'sse' => rest_url('wp/v2/claude-mcp/sse'),
-                'mcp' => rest_url('wp/v2/claude-mcp/mcp'),
+                'sse' => rest_url(self::NAMESPACE . '/sse'),
+                'messages' => rest_url(self::NAMESPACE . '/messages'),
+                'mcp' => rest_url(self::NAMESPACE . '/mcp'),
             ),
             'version' => WP_CLAUDE_MCP_VERSION,
             'site' => get_bloginfo('name'),

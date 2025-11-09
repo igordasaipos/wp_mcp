@@ -190,7 +190,7 @@ class WP_Claude_MCP {
         );
 
         wp_localize_script('wp-claude-mcp-admin', 'wpClaudeMCP', array(
-            'apiUrl' => rest_url('wp/v2/claude-mcp'),
+            'apiUrl' => rest_url('mcp/v1'),
             'nonce' => wp_create_nonce('wp_rest'),
             'siteUrl' => get_site_url(),
         ));
