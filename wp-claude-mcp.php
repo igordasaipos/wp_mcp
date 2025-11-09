@@ -2,8 +2,8 @@
 /**
  * Plugin Name: WordPress Claude MCP Integration
  * Plugin URI: https://github.com/igordasaipos/wp_mcp
- * Description: Integração do WordPress com Claude AI usando Model Context Protocol (MCP)
- * Version: 1.0.0
+ * Description: Integração do WordPress com Claude AI usando Model Context Protocol (MCP) - 35 ferramentas + SSE
+ * Version: 1.1.0
  * Author: Igor da Saipos
  * Author URI: https://github.com/igordasaipos
  * License: GPL v2 or later
@@ -19,7 +19,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Define constantes do plugin
-define('WP_CLAUDE_MCP_VERSION', '1.0.0');
+define('WP_CLAUDE_MCP_VERSION', '1.1.0');
 define('WP_CLAUDE_MCP_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('WP_CLAUDE_MCP_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('WP_CLAUDE_MCP_PLUGIN_FILE', __FILE__);
@@ -59,6 +59,8 @@ class WP_Claude_MCP {
         require_once WP_CLAUDE_MCP_PLUGIN_DIR . 'includes/class-jwt-auth.php';
         require_once WP_CLAUDE_MCP_PLUGIN_DIR . 'includes/class-mcp-server.php';
         require_once WP_CLAUDE_MCP_PLUGIN_DIR . 'includes/class-mcp-tools.php';
+        require_once WP_CLAUDE_MCP_PLUGIN_DIR . 'includes/class-advanced-tools.php';
+        require_once WP_CLAUDE_MCP_PLUGIN_DIR . 'includes/class-sse-server.php';
         require_once WP_CLAUDE_MCP_PLUGIN_DIR . 'includes/class-admin-ui.php';
         require_once WP_CLAUDE_MCP_PLUGIN_DIR . 'includes/class-rest-api.php';
     }
@@ -161,7 +163,7 @@ class WP_Claude_MCP {
      * Renderiza a página de administração
      */
     public function render_admin_page() {
-        echo '<div id="wp-claude-mcp-admin-root"></div>';
+        WP_Claude_MCP_Admin_UI::render_settings_page();
     }
 
     /**
