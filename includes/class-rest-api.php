@@ -495,10 +495,15 @@ class WP_Claude_MCP_REST_API {
         // Inicia stream SSE
         WP_Claude_MCP_SSE_Server::start_stream();
 
-        // Envia informações do servidor (discovery)
-        WP_Claude_MCP_SSE_Server::send_event('endpoint', array(
+        // Envia endpoint URL como primeiro evento
+        echo "event: endpoint\n";
+        echo "data: " . rest_url('wp/v2/claude-mcp/sse') . "\n\n";
+        flush();
+
+        // Envia mensagem de inicialização
+        $init_message = array(
             'jsonrpc' => '2.0',
-            'method' => 'initialize',
+            'id' => 1,
             'result' => array(
                 'protocolVersion' => WP_Claude_MCP_Server::MCP_VERSION,
                 'serverInfo' => array(
@@ -513,26 +518,32 @@ class WP_Claude_MCP_REST_API {
                     'prompts' => array(),
                 ),
             ),
-        ));
+        );
+
+        echo "event: message\n";
+        echo "data: " . json_encode($init_message) . "\n\n";
+        flush();
 
         // Envia lista de ferramentas
         $tools_response = WP_Claude_MCP_Server::list_tools();
-        WP_Claude_MCP_SSE_Server::send_event('message', array(
+        $tools_message = array(
             'jsonrpc' => '2.0',
-            'method' => 'tools/list',
+            'id' => 2,
             'result' => $tools_response,
-        ));
+        );
 
-        // Mantém a conexão viva e aguarda mensagens
+        echo "event: message\n";
+        echo "data: " . json_encode($tools_message) . "\n\n";
+        flush();
+
+        // Mantém a conexão viva
         $counter = 0;
         while ($counter < 300) { // 5 minutos máximo
-            // Envia ping a cada 10 segundos
-            if ($counter % 10 === 0) {
-                WP_Claude_MCP_SSE_Server::send_ping();
+            // Envia ping a cada 30 segundos
+            if ($counter % 30 === 0 && $counter > 0) {
+                echo ": keepalive\n\n";
+                flush();
             }
-
-            // Verifica se há mensagens pendentes (via database ou file)
-            // Por enquanto, apenas mantém a conexão viva
 
             sleep(1);
             $counter++;
