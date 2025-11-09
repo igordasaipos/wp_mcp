@@ -44,6 +44,11 @@ class WP_Claude_MCP_REST_API {
                 'callback' => array($this, 'handle_sse_message'),
                 'permission_callback' => array($this, 'check_remote_permission'),
             ),
+            array(
+                'methods' => 'OPTIONS',
+                'callback' => array($this, 'handle_options'),
+                'permission_callback' => '__return_true',
+            ),
         ));
 
         // Endpoint OAuth2
@@ -472,11 +477,23 @@ class WP_Claude_MCP_REST_API {
     }
 
     /**
-     * Handler para mensagens POST enviadas ao SSE
+     * Handler para requisições OPTIONS (CORS preflight)
+     */
+    public function handle_options($request) {
+        header('Access-Control-Allow-Origin: *');
+        header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
+        header('Access-Control-Allow-Headers: Content-Type, Accept, Authorization');
+        header('Access-Control-Max-Age: 86400');
+        return rest_ensure_response(array('status' => 'ok'));
+    }
+
+    /**
+     * Handler para mensagens POST enviadas ao SSE (Streamable HTTP)
      */
     public function handle_sse_message($request) {
         header('Access-Control-Allow-Origin: *');
-        header('Content-Type: application/json');
+        header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
+        header('Access-Control-Allow-Headers: Content-Type, Accept, Authorization');
 
         $body = $request->get_json_params();
 
@@ -484,74 +501,95 @@ class WP_Claude_MCP_REST_API {
             return new WP_Error('invalid_request', 'Corpo da requisição inválido', array('status' => 400));
         }
 
-        // Processa como requisição MCP padrão
-        return $this->handle_mcp_request($request);
+        // Verifica o Accept header
+        $accept_header = $request->get_header('accept');
+        $supports_sse = strpos($accept_header, 'text/event-stream') !== false;
+
+        // Processa a requisição MCP
+        $result = $this->handle_mcp_request($request);
+
+        // Se o cliente aceita SSE E a requisição é assíncrona, retorna via SSE
+        if ($supports_sse && isset($body['method']) && in_array($body['method'], array('tools/call', 'resources/read'))) {
+            // Retorna via SSE para operações que podem ser longas
+            header('Content-Type: text/event-stream');
+            header('Cache-Control: no-cache');
+            header('Connection: keep-alive');
+
+            // Envia o resultado como evento SSE
+            $message = array(
+                'jsonrpc' => '2.0',
+                'id' => isset($body['id']) ? $body['id'] : null,
+                'result' => is_wp_error($result) ? null : $result,
+                'error' => is_wp_error($result) ? array(
+                    'code' => $result->get_error_code(),
+                    'message' => $result->get_error_message(),
+                ) : null,
+            );
+
+            echo "event: message\n";
+            echo "data: " . json_encode($message) . "\n\n";
+            flush();
+            exit;
+        }
+
+        // Caso contrário, retorna JSON normal
+        header('Content-Type: application/json');
+
+        if (is_wp_error($result)) {
+            return array(
+                'jsonrpc' => '2.0',
+                'id' => isset($body['id']) ? $body['id'] : null,
+                'error' => array(
+                    'code' => $result->get_error_code(),
+                    'message' => $result->get_error_message(),
+                ),
+            );
+        }
+
+        return array(
+            'jsonrpc' => '2.0',
+            'id' => isset($body['id']) ? $body['id'] : null,
+            'result' => $result,
+        );
     }
 
     /**
-     * Handler para SSE Stream - Remote MCP Server via SSE
+     * Handler para SSE Stream - Streamable HTTP (GET method)
+     * Conforme MCP Specification 2025-06-18
      */
     public function handle_sse_stream($request) {
         // Inicia stream SSE
-        WP_Claude_MCP_SSE_Server::start_stream();
+        header('Content-Type: text/event-stream');
+        header('Cache-Control: no-cache');
+        header('Connection: keep-alive');
+        header('X-Accel-Buffering: no'); // Nginx
+        header('Access-Control-Allow-Origin: *');
+
+        // Desabilita buffering do PHP
+        if (ob_get_level()) {
+            ob_end_clean();
+        }
+        set_time_limit(0);
+        ignore_user_abort(false);
 
         // Envia endpoint URL como primeiro evento
         echo "event: endpoint\n";
         echo "data: " . rest_url('wp/v2/claude-mcp/sse') . "\n\n";
-        flush();
-
-        // Envia mensagem de inicialização
-        $init_message = array(
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'result' => array(
-                'protocolVersion' => WP_Claude_MCP_Server::MCP_VERSION,
-                'serverInfo' => array(
-                    'name' => 'WordPress Claude MCP',
-                    'version' => WP_CLAUDE_MCP_VERSION,
-                ),
-                'capabilities' => array(
-                    'tools' => array(),
-                    'resources' => array(
-                        'subscribe' => false,
-                    ),
-                    'prompts' => array(),
-                ),
-            ),
-        );
-
-        echo "event: message\n";
-        echo "data: " . json_encode($init_message) . "\n\n";
-        flush();
-
-        // Envia lista de ferramentas
-        $tools_response = WP_Claude_MCP_Server::list_tools();
-        $tools_message = array(
-            'jsonrpc' => '2.0',
-            'id' => 2,
-            'result' => $tools_response,
-        );
-
-        echo "event: message\n";
-        echo "data: " . json_encode($tools_message) . "\n\n";
+        if (ob_get_level()) ob_flush();
         flush();
 
         // Mantém a conexão viva
         $counter = 0;
-        while ($counter < 300) { // 5 minutos máximo
-            // Envia ping a cada 30 segundos
-            if ($counter % 30 === 0 && $counter > 0) {
+        while ($counter < 300 && !connection_aborted()) { // 5 minutos máximo
+            // Envia keepalive a cada 15 segundos
+            if ($counter % 15 === 0 && $counter > 0) {
                 echo ": keepalive\n\n";
+                if (ob_get_level()) ob_flush();
                 flush();
             }
 
             sleep(1);
             $counter++;
-
-            // Verifica se cliente desconectou
-            if (connection_aborted()) {
-                break;
-            }
         }
 
         exit;
