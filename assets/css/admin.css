@@ -1,0 +1,262 @@
+/**
+ * Estilos da interface de administração do WordPress Claude MCP
+ */
+
+.wp-claude-mcp-admin {
+    max-width: 1200px;
+    margin: 20px 0;
+}
+
+.wp-claude-mcp-header {
+    background: #fff;
+    padding: 20px;
+    margin-bottom: 20px;
+    border: 1px solid #c3c4c7;
+    box-shadow: 0 1px 1px rgba(0, 0, 0, 0.04);
+}
+
+.wp-claude-mcp-header h2 {
+    margin-top: 0;
+    color: #1d2327;
+}
+
+.wp-claude-mcp-tokens-container {
+    background: #fff;
+    padding: 20px;
+    border: 1px solid #c3c4c7;
+    box-shadow: 0 1px 1px rgba(0, 0, 0, 0.04);
+}
+
+.wp-claude-mcp-token-form {
+    background: #f6f7f7;
+    padding: 20px;
+    border-radius: 4px;
+    margin-bottom: 30px;
+}
+
+.wp-claude-mcp-token-form h3 {
+    margin-top: 0;
+}
+
+.wp-claude-mcp-form-field {
+    margin-bottom: 15px;
+}
+
+.wp-claude-mcp-form-field label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: 600;
+    color: #1d2327;
+}
+
+.wp-claude-mcp-form-field input[type="text"],
+.wp-claude-mcp-form-field select {
+    width: 100%;
+    max-width: 400px;
+    padding: 8px 12px;
+    border: 1px solid #8c8f94;
+    border-radius: 4px;
+    font-size: 14px;
+}
+
+.wp-claude-mcp-form-field input[type="text"]:focus,
+.wp-claude-mcp-form-field select:focus {
+    border-color: #2271b1;
+    outline: none;
+    box-shadow: 0 0 0 1px #2271b1;
+}
+
+.wp-claude-mcp-form-actions {
+    margin-top: 20px;
+}
+
+.wp-claude-mcp-button {
+    background: #2271b1;
+    color: #fff;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 600;
+    transition: background 0.2s;
+}
+
+.wp-claude-mcp-button:hover {
+    background: #135e96;
+}
+
+.wp-claude-mcp-button:disabled {
+    background: #dcdcde;
+    color: #a7aaad;
+    cursor: not-allowed;
+}
+
+.wp-claude-mcp-button-danger {
+    background: #d63638;
+}
+
+.wp-claude-mcp-button-danger:hover {
+    background: #b32d2e;
+}
+
+.wp-claude-mcp-tokens-list {
+    margin-top: 30px;
+}
+
+.wp-claude-mcp-tokens-list h3 {
+    margin-bottom: 15px;
+}
+
+.wp-claude-mcp-token-item {
+    background: #fff;
+    border: 1px solid #c3c4c7;
+    border-radius: 4px;
+    padding: 15px;
+    margin-bottom: 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.wp-claude-mcp-token-info h4 {
+    margin: 0 0 5px 0;
+    color: #1d2327;
+}
+
+.wp-claude-mcp-token-meta {
+    font-size: 13px;
+    color: #646970;
+}
+
+.wp-claude-mcp-token-meta span {
+    margin-right: 15px;
+}
+
+.wp-claude-mcp-token-actions button {
+    margin-left: 10px;
+}
+
+.wp-claude-mcp-token-display {
+    background: #f6f7f7;
+    padding: 15px;
+    border-radius: 4px;
+    margin-top: 20px;
+    border: 1px solid #c3c4c7;
+}
+
+.wp-claude-mcp-token-display h4 {
+    margin-top: 0;
+    color: #d63638;
+}
+
+.wp-claude-mcp-token-value {
+    background: #fff;
+    padding: 12px;
+    border: 1px solid #c3c4c7;
+    border-radius: 4px;
+    font-family: monospace;
+    font-size: 13px;
+    word-break: break-all;
+    margin: 10px 0;
+}
+
+.wp-claude-mcp-copy-button {
+    background: #50575e;
+    color: #fff;
+    border: none;
+    padding: 8px 15px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 13px;
+}
+
+.wp-claude-mcp-copy-button:hover {
+    background: #3c434a;
+}
+
+.wp-claude-mcp-notice {
+    background: #fff;
+    border-left: 4px solid #2271b1;
+    padding: 12px;
+    margin: 15px 0;
+    box-shadow: 0 1px 1px rgba(0, 0, 0, 0.04);
+}
+
+.wp-claude-mcp-notice.error {
+    border-left-color: #d63638;
+}
+
+.wp-claude-mcp-notice.success {
+    border-left-color: #00a32a;
+}
+
+.wp-claude-mcp-notice.warning {
+    border-left-color: #dba617;
+}
+
+.wp-claude-mcp-loading {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    border: 3px solid #f3f3f3;
+    border-top: 3px solid #2271b1;
+    border-radius: 50%;
+    animation: wp-claude-mcp-spin 1s linear infinite;
+}
+
+@keyframes wp-claude-mcp-spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.wp-claude-mcp-empty-state {
+    text-align: center;
+    padding: 40px 20px;
+    color: #646970;
+}
+
+.wp-claude-mcp-empty-state svg {
+    width: 80px;
+    height: 80px;
+    margin-bottom: 20px;
+    opacity: 0.5;
+}
+
+.wp-claude-mcp-badge {
+    display: inline-block;
+    padding: 4px 8px;
+    border-radius: 3px;
+    font-size: 12px;
+    font-weight: 600;
+    background: #f0f0f1;
+    color: #50575e;
+}
+
+.wp-claude-mcp-badge.active {
+    background: #d5e8d4;
+    color: #00a32a;
+}
+
+.wp-claude-mcp-badge.inactive {
+    background: #f8d7da;
+    color: #d63638;
+}
+
+/* Responsividade */
+@media (max-width: 768px) {
+    .wp-claude-mcp-token-item {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .wp-claude-mcp-token-actions {
+        margin-top: 15px;
+        width: 100%;
+    }
+
+    .wp-claude-mcp-token-actions button {
+        margin-left: 0;
+        margin-right: 10px;
+    }
+}
