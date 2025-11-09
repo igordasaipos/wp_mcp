@@ -22,14 +22,28 @@ class WP_Claude_MCP_Admin_UI {
             <div class="wp-claude-mcp-info-box" style="max-width: 800px; margin-top: 30px; padding: 20px; background: #d5e8d4; border-left: 4px solid #00a32a;">
                 <h2>🌐 <?php echo esc_html__('Como Conectar ao Claude Web', 'wp-claude-mcp'); ?></h2>
 
-                <p><strong><?php echo esc_html__('Use esta URL para conectar via Claude.ai (navegador):', 'wp-claude-mcp'); ?></strong></p>
+                <p><strong><?php echo esc_html__('Copie estas URLs para conectar via Claude.ai:', 'wp-claude-mcp'); ?></strong></p>
 
-                <div style="background: #fff; padding: 15px; margin: 10px 0; border-radius: 4px; font-size: 16px;">
-                    <strong><?php echo esc_html__('Remote MCP Server URL:', 'wp-claude-mcp'); ?></strong><br>
-                    <code style="font-size: 14px; word-break: break-all;"><?php echo esc_url(rest_url('wp/v2/claude-mcp/remote')); ?></code>
-                    <button class="button button-small" onclick="navigator.clipboard.writeText('<?php echo esc_js(rest_url('wp/v2/claude-mcp/remote')); ?>')" style="margin-left: 10px;">
-                        <?php echo esc_html__('📋 Copiar URL', 'wp-claude-mcp'); ?>
+                <div style="background: #fff; padding: 15px; margin: 10px 0; border-radius: 4px;">
+                    <strong><?php echo esc_html__('🔗 Remote MCP Server URL (Básica):', 'wp-claude-mcp'); ?></strong><br>
+                    <code style="font-size: 13px; word-break: break-all; display: block; margin: 5px 0;"><?php echo esc_url(rest_url('wp/v2/claude-mcp/remote')); ?></code>
+                    <button class="button button-small" onclick="navigator.clipboard.writeText('<?php echo esc_js(rest_url('wp/v2/claude-mcp/remote')); ?>')">
+                        <?php echo esc_html__('📋 Copiar', 'wp-claude-mcp'); ?>
                     </button>
+                    <p style="margin: 10px 0 0 0; font-size: 12px; color: #666;">
+                        <?php echo esc_html__('Use esta URL + Header "Authorization: Bearer TOKEN"', 'wp-claude-mcp'); ?>
+                    </p>
+                </div>
+
+                <div style="background: #fff; padding: 15px; margin: 10px 0; border-radius: 4px; border: 2px solid #00a32a;">
+                    <strong><?php echo esc_html__('⚡ SSE Streaming URL (Recomendada):', 'wp-claude-mcp'); ?></strong><br>
+                    <code style="font-size: 13px; word-break: break-all; display: block; margin: 5px 0;" id="sse-url-template"><?php echo esc_url(rest_url('wp/v2/claude-mcp/sse')); ?>?token=SEU_TOKEN_AQUI</code>
+                    <button class="button button-small" onclick="navigator.clipboard.writeText(document.getElementById('sse-url-template').textContent)">
+                        <?php echo esc_html__('📋 Copiar Template', 'wp-claude-mcp'); ?>
+                    </button>
+                    <p style="margin: 10px 0 0 0; font-size: 12px; color: #00a32a; font-weight: bold;">
+                        <?php echo esc_html__('💡 Após gerar um token, a URL completa aparecerá automaticamente!', 'wp-claude-mcp'); ?>
+                    </p>
                 </div>
 
                 <h3><?php echo esc_html__('Passos para Conectar:', 'wp-claude-mcp'); ?></h3>

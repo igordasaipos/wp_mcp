@@ -201,6 +201,9 @@
                     { className: 'wp-claude-mcp-token-display' },
                     wp.element.createElement('h4', null, '⚠️ Atenção: Copie este token agora!'),
                     wp.element.createElement('p', null, 'Por questões de segurança, você não poderá ver este token novamente.'),
+
+                    // Token puro
+                    wp.element.createElement('h5', { style: { marginTop: '20px', marginBottom: '10px' } }, '🔑 Token:'),
                     wp.element.createElement(
                         'div',
                         { className: 'wp-claude-mcp-token-value' },
@@ -214,6 +217,46 @@
                             onClick: () => copyToClipboard(newToken.token),
                         },
                         '📋 Copiar Token'
+                    ),
+
+                    // URL SSE pronta
+                    wp.element.createElement('h5', { style: { marginTop: '20px', marginBottom: '10px', color: '#00a32a' } }, '⚡ URL SSE (Streaming - Recomendada):'),
+                    wp.element.createElement('p', { style: { fontSize: '12px', margin: '5px 0' } }, 'Cole esta URL direto no Claude Web - token já incluído!'),
+                    wp.element.createElement(
+                        'div',
+                        {
+                            className: 'wp-claude-mcp-token-value',
+                            style: { background: '#d5e8d4', borderColor: '#00a32a' }
+                        },
+                        wpClaudeMCP.siteUrl + '/wp-json/wp/v2/claude-mcp/sse?token=' + newToken.token
+                    ),
+                    wp.element.createElement(
+                        'button',
+                        {
+                            type: 'button',
+                            className: 'wp-claude-mcp-copy-button',
+                            style: { background: '#00a32a' },
+                            onClick: () => copyToClipboard(wpClaudeMCP.siteUrl + '/wp-json/wp/v2/claude-mcp/sse?token=' + newToken.token),
+                        },
+                        '📋 Copiar URL SSE Completa'
+                    ),
+
+                    // URL Remote MCP
+                    wp.element.createElement('h5', { style: { marginTop: '20px', marginBottom: '10px' } }, '🔗 URL Remote MCP (Básica):'),
+                    wp.element.createElement('p', { style: { fontSize: '12px', margin: '5px 0' } }, 'Use com Header: Authorization: Bearer TOKEN'),
+                    wp.element.createElement(
+                        'div',
+                        { className: 'wp-claude-mcp-token-value' },
+                        wpClaudeMCP.siteUrl + '/wp-json/wp/v2/claude-mcp/remote'
+                    ),
+                    wp.element.createElement(
+                        'button',
+                        {
+                            type: 'button',
+                            className: 'wp-claude-mcp-copy-button',
+                            onClick: () => copyToClipboard(wpClaudeMCP.siteUrl + '/wp-json/wp/v2/claude-mcp/remote'),
+                        },
+                        '📋 Copiar URL Remote MCP'
                     )
                 ),
 

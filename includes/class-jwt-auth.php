@@ -133,21 +133,31 @@ class WP_Claude_MCP_JWT_Auth {
     }
 
     /**
-     * Autentica uma requisição usando o header Authorization
+     * Autentica uma requisição usando o header Authorization ou query parameter
      */
     public static function authenticate_request() {
+        $token = null;
+
+        // Primeiro tenta pegar do header Authorization
         $auth_header = isset($_SERVER['HTTP_AUTHORIZATION']) ? $_SERVER['HTTP_AUTHORIZATION'] : '';
 
-        if (empty($auth_header)) {
+        if (!empty($auth_header)) {
+            // Extrai o token do header "Bearer {token}"
+            if (preg_match('/Bearer\s+(.+)/i', $auth_header, $matches)) {
+                $token = $matches[1];
+            }
+        }
+
+        // Se não encontrou no header, tenta pegar do query parameter
+        if (!$token && isset($_GET['token'])) {
+            $token = sanitize_text_field($_GET['token']);
+        }
+
+        // Se não encontrou token em nenhum lugar
+        if (!$token) {
             return false;
         }
 
-        // Extrai o token do header "Bearer {token}"
-        if (preg_match('/Bearer\s+(.+)/i', $auth_header, $matches)) {
-            $token = $matches[1];
-            return self::validate_token($token);
-        }
-
-        return false;
+        return self::validate_token($token);
     }
 }
